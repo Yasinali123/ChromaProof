@@ -1,13 +1,34 @@
-import React, { useState } from 'react';
-import { Database, Search, Filter, ShieldCheck, Eye, X, CheckCircle2, Clock, MapPin, User, FileText } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Database, Search, Filter, ShieldCheck, Eye, X, CheckCircle2, Clock, MapPin, User, FileText, RefreshCw } from 'lucide-react';
 import { INITIAL_EVIDENCE_RECORDS } from '../../data/evidenceData';
 
 export default function EvidenceLogSection() {
   const [searchTerm, setSearchTerm] = useState('');
   const [resultFilter, setResultFilter] = useState('ALL');
   const [selectedRecord, setSelectedRecord] = useState(null);
+  const [records, setRecords] = useState(INITIAL_EVIDENCE_RECORDS);
+  const [loading, setLoading] = useState(false);
 
-  const records = INITIAL_EVIDENCE_RECORDS;
+  const fetchRecords = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/evidence');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.records && Array.isArray(data.records)) {
+          setRecords(data.records);
+        }
+      }
+    } catch (err) {
+      console.warn('API fetch error, using initial static records fallback:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRecords();
+  }, []);
 
   const filteredRecords = records.filter((rec) => {
     const matchesSearch = 

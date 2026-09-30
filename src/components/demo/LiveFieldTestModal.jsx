@@ -26,35 +26,64 @@ export default function LiveFieldTestModal({ isOpen, onClose }) {
 
   if (!isOpen) return null;
 
-  const handleStartCapture = () => {
+  const handleStartCapture = async () => {
     setStep(3);
     setIsProcessing(true);
 
-    setTimeout(() => {
-      setIsProcessing(false);
+    const isGlare = glareSimulated;
+    const outcome = isGlare ? 'INCONCLUSIVE' : 'NEGATIVE';
+    const confidence = isGlare ? 62.4 : 97.4;
+    const deltaE = isGlare ? 8.91 : 3.12;
 
-      if (glareSimulated) {
+    try {
+      const res = await fetch('/api/evidence', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          officer: 'OP-0148',
+          unit: 'NCB Regional Field Unit 4',
+          kitProfile: `${selectedKit.id}-${selectedKit.version}`,
+          substanceTested: selectedKit.targetSubstances,
+          result: outcome,
+          confidence: confidence,
+          deltaE: deltaE,
+          calibrationDetails: {
+            illuminant: isGlare ? 'Sodium Shift' : 'D65 Daylight',
+            patchesDetected: isGlare ? '22/24' : '24/24',
+            wbFactor: 'R:1.00 G:1.00 B:1.00',
+            reagentRegion: 'Bounding Box [X:140, Y:280, W:64, H:64]'
+          }
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
         setSimulatedResult({
-          outcome: 'INCONCLUSIVE',
-          confidence: 62.4,
-          deltaE: 8.91,
-          reason: 'SPECULAR_GLARE_PATCH_04_EXCEEDS_15%',
-          hash: '7b4c9a8e1f2d3c4b5a6f7e8d9c0b1a2f3e4d5c6b7a8f9e0d1c2b3a4f5e6d7c8b',
-          signature: '3045022100a1...9f8e02203b2c...ecdsa_p256'
+          outcome: data.record.result,
+          confidence: data.record.confidence,
+          deltaE: data.record.deltaE,
+          reason: isGlare ? 'SPECULAR_GLARE_PATCH_04_EXCEEDS_15%' : 'NOMINAL_BASELINE_MATCH',
+          hash: data.record.imageHash,
+          signature: data.record.signature,
+          recordId: data.record.id
         });
       } else {
-        setSimulatedResult({
-          outcome: 'NEGATIVE',
-          confidence: 97.4,
-          deltaE: 3.12,
-          reason: 'NOMINAL_BASELINE_MATCH',
-          hash: 'a91f3c8e7b2d5a1f4e90c8b7a6f5e4d3c2b1a099887766554433221100fce7c42',
-          signature: '304402207b1a...8e2f02204c3d...ecdsa_p256'
-        });
+        throw new Error('API server response failed');
       }
-
+    } catch (err) {
+      console.warn('API fetch warning, using local calculation fallback:', err);
+      setSimulatedResult({
+        outcome: outcome,
+        confidence: confidence,
+        deltaE: deltaE,
+        reason: isGlare ? 'SPECULAR_GLARE_PATCH_04_EXCEEDS_15%' : 'NOMINAL_BASELINE_MATCH',
+        hash: 'a91f3c8e7b2d5a1f4e90c8b7a6f5e4d3c2b1a099887766554433221100fce7c42',
+        signature: '304402207b1a...8e2f02204c3d...ecdsa_p256'
+      });
+    } finally {
+      setIsProcessing(false);
       setStep(4);
-    }, 2200);
+    }
   };
 
   const handleReset = () => {
