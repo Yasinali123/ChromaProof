@@ -1,6 +1,17 @@
 services:
+  # 1. Full-Stack Node.js Service (Frontend + Express REST API)
   - type: web
-    name: chromaproof
+    name: chromaproof-api
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+  # 2. Static Site CDN Deployment
+  - type: web
+    name: chromaproof-static
     env: static
     buildCommand: npm run build
     staticPublishPath: ./dist

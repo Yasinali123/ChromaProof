@@ -157,6 +157,25 @@ app.get('/api/research', (req, res) => {
   });
 });
 
+// Serve built frontend static assets if available (Full-stack Node.js deployment / Render)
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const distPath = path.join(__dirname, '../dist');
+
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) {
+      return next();
+    }
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+}
+
 // Export app for serverless function (Vercel) & direct listening
 export default app;
 
